@@ -1,66 +1,61 @@
-import React, { Component } from "react";
-import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
+import React, {Component} from 'react';
+import {Redirect, Route, Switch} from 'react-router-dom';
+import {connect} from 'react-redux';
+import {setInitUrl} from './actions/authActions';
+import MainApp from './app/index';
+import SignUp from './SignUp';
+import Login from './LogIn';
+import asyncComponent from './util/asyncComponent';
 
-import PrivateRoute from "./PrivateRoute";
-import firebaseApp from "./firebaseApp";
 
-import Home from "./Home";
-import LogIn from "./LogIn";
-import SignUp from "./SignUp";
-import NotFound from "./NotFound"
+const RestrictedRoute = ({component: Component, rest, authUser}) =>
+    <Route
+        {...rest}
+        render={props =>
+            true
+                ? <Component {...props} />
+                : <Redirect
+                    to={{
+                        pathname: '/login',
+                        state: {from: props.location}
+                    }}
+                />}
+    />;
 
 class App extends Component {
-  state = { loading: true, authenticated: false, user: null };
 
-  componentWillMount() {
-    firebaseApp.auth().onAuthStateChanged(user => {
-      if (user) {
-        this.setState({
-          authenticated: true,
-          currentUser: user,
-          loading: false
-        });
-      } else {
-        this.setState({
-          authenticated: false,
-          currentUser: null,
-          loading: false
-        });
-      }
-    });
-  }
+    render() {
+        const {match, location, authUser, initURL} = this.props;
+        if (location.pathname === '/') {
+            console.log(authUser)
+            if (authUser === null || authUser === undefined) {
+                return (<Redirect to={'/login'}/>);
+            } else if (initURL === '' || initURL === '/' || initURL === '/login') {
+                return (<Redirect to={'/app/home'}/>);
+            } else {
+                return (<Redirect to={initURL}/>);
+            }
+        }
 
-  render() {
-    const { authenticated, loading } = this.state;
-
-    if (loading) {
-      return <p>Loading..</p>;
+        return (
+            <div className="app-main">
+                <Switch>
+                    <RestrictedRoute path={`${match.url}app`} authUser={authUser}
+                                     component={MainApp}/>
+                    <Route path='/signup' component={SignUp}/>
+                    <Route path='/login' component={Login}/>
+                    <Route
+                        component={asyncComponent(() => import('./NotFound'))}/>
+                </Switch>
+            </div>
+        );
     }
-
-    return (
-      <Router>
-        <div>
-          <Switch>
-            <PrivateRoute
-              exact
-              path="/home"
-              component={Home}
-              authenticated={authenticated}
-            />
-            <PrivateRoute
-              exact
-              path="/"
-              component={Home}
-              authenticated={authenticated}
-            />
-            <Route exact path="/login" component={LogIn} />
-            <Route exact path="/signup" component={SignUp} />
-            <Route exact path="*" component={NotFound} />
-          </Switch>
-        </div>
-      </Router>
-    );
-  }
 }
 
-export default App;
+
+const mapStateToProps = ({auth}) => {
+    const {initURL} = auth;
+    return { initURL}
+};
+
+export default connect(mapStateToProps, {setInitUrl})(App);

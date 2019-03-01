@@ -11,7 +11,7 @@ class LogInContainer extends Component {
       const user = await firebaseApp
         .auth()
         .signInWithEmailAndPassword(email.value, password.value);
-      this.props.history.push("/home");
+      this.props.history.push("/app/home");
     } catch (error) {
       alert(error);
     }
